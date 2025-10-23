@@ -1,52 +1,26 @@
-import sqlite3
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+from db import SaveToDB, RetrieveData
 
-con = sqlite3.connect("journal_entries.db")
-
-cur = con.cursor()
-cur.execute("""CREATE TABLE IF NOT EXISTS JOURNAL_ENTRIES(
-            TimeInMilli INTEGER PRIMARY KEY,
-            Date TEXT,
-            Entry TEXT
-            );""")
-
-#function for storing data
-def SaveToDB(data):
-    #data will be json, make into a list of tuples, then save data
-    con = sqlite3.connect("journal_entries.db")
-    cur = con.cursor()
-    time = data["TimeInMilli"]
-    date = data["Date"]
-    entry = data["Entry"]
-    cur.execute("INSERT INTO JOURNAL_ENTRIES (TimeInMilli, Date, Entry) VALUES(?, ?, ?);", (time, date, entry))
-    con.commit()
-    con.close()
-
-#function for retrieving data
-def RetrieveData():
-    #data is returned as lists of tuples from the db
-    con = sqlite3.connect("journal_entries.db")
-    cur = con.cursor()
-    result = cur.execute("""SELECT * 
-                          FROM JOURNAL_ENTRIES;""")
-    AllData = result.fetchall() # ✅ get all the rows while the DB is still open
-    con.close()
-    return AllData
-
-#api stuff
 app = Flask(__name__)
 
+CORS(app, supports_credentials=True)  # This allows all domains to access all routes (for dev it's fine)
+
 #will take data sent from user
-@app.route("/DiaryEntry.html", methods=["POST"]) #POST will be used here cz this will *send* data to the db
+@app.route("/api/save-entry", methods=["POST"]) #POST will be used here cz this will *send* data to the db
 def TakeEntry():
     data = request.get_json()
 
+    print(data)
+
     SaveToDB(data)
 
-    return {"success":True, "message": "data successfully stored"}
+    msg = {"success":True, "message": "data successfully stored"}
+
+    return jsonify(msg)
 
 #will send data to the user 
-@app.route("/PrvEnt.html", methods=["GET"]) #GET will be used here cz this will *retrieve* data from the db
+@app.route("/api/get-entries", methods=["GET"]) #GET will be used here cz this will *retrieve* data from the db
 def SendEntries():
     DictEntries = RetrieveData()
 
@@ -57,7 +31,12 @@ def SendEntries():
 
     return jsonify(EntriesToSend)
 
-con.close()
+#retrieve entry to be edited
+@app.route("/api/edit-entry/<TimeInMilli>", methods=["GET"])
+def EditEntry(TimeInMilli):
+    OriginalEntry = RetrieveData(TimeInMilli)
+
+    return jsonify(OriginalEntry)
 
 if __name__ == "__main__":
     app.run(debug=True)
