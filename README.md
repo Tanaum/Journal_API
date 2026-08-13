@@ -1,4 +1,4 @@
-# Journal API 📔
+# Journal API
 
 A REST API for a simple journaling application, built with **Flask** and **SQLite**.
 
